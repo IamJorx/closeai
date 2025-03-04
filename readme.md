@@ -56,7 +56,7 @@ Comparación de transacciones
 
 - Identificación de coincidencias exactas y transacciones con discrepancias.
 - Tolerancia a variaciones menores en montos y fechas.
-- Detección de estados inconsistentes (ej. “Exitosa” vs “Fallida”).
+- Detección de estados inconsistentes (ej. "Exitosa" vs "Fallida").
 
 Análisis y Reportes
 
@@ -93,7 +93,139 @@ Flujo de usuario esperado:
 
 ### **1.4. Instrucciones de instalación:**
 
-> En construcción
+#### Requisitos previos
+
+- [Docker](https://www.docker.com/products/docker-desktop/) y Docker Compose
+- [Node.js](https://nodejs.org/) (v18 o superior)
+- [Python](https://www.python.org/) 3.11 o superior (opcional, solo si no se usa Docker)
+- [Git](https://git-scm.com/)
+
+#### Clonar el repositorio
+
+```bash
+git clone https://github.com/IamJorx/close-ai.git
+cd close-ai
+```
+
+#### Configuración del Backend
+
+1. **Usando Docker (recomendado)**:
+
+   Navega a la carpeta del backend:
+
+   ```bash
+   cd closeai-backend
+   ```
+
+   Crea un archivo `.env` basado en el ejemplo:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edita el archivo `.env` para configurar las variables de entorno:
+
+   ```
+   # PostgreSQL
+   POSTGRES_SERVER=postgres
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=closeai
+   POSTGRES_PORT=5432
+
+   # General
+   SECRET_KEY=your-secret-key
+   BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+   ```
+
+   Inicia los servicios con Docker Compose:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+   Esto iniciará:
+
+   - El servidor API en http://localhost:8000
+   - PostgreSQL en el puerto 5432
+   - pgAdmin en http://localhost:5050 (opcional, para gestionar la base de datos)
+
+2. **Instalación manual (alternativa)**:
+
+   Navega a la carpeta del backend:
+
+   ```bash
+   cd closeai-backend
+   ```
+
+   Crea y activa un entorno virtual:
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   ```
+
+   Instala las dependencias:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   Configura las variables de entorno (similar al paso anterior).
+
+   Ejecuta las migraciones de la base de datos:
+
+   ```bash
+   alembic upgrade head
+   ```
+
+   Inicia el servidor:
+
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+#### Configuración del Frontend
+
+1. Navega a la carpeta del frontend:
+
+   ```bash
+   cd closeai-frontend
+   ```
+
+2. Instala las dependencias:
+
+   ```bash
+   npm install
+   ```
+
+3. Crea un archivo `.env.local` con la configuración:
+
+   ```
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+   ```
+
+4. Inicia el servidor de desarrollo:
+
+   ```bash
+   npm run dev
+   ```
+
+   El frontend estará disponible en http://localhost:3000
+
+#### Verificación de la instalación
+
+1. Accede al frontend en http://localhost:3000
+2. Verifica que puedes cargar archivos Excel y realizar comparaciones
+3. La documentación de la API está disponible en http://localhost:8000/docs
+
+#### Solución de problemas comunes
+
+- **Error de conexión a la base de datos**: Verifica que PostgreSQL esté en ejecución y las credenciales en el archivo `.env` sean correctas.
+- **Error al cargar archivos**: Asegúrate de que los archivos Excel tengan el formato esperado (consulta la documentación).
+- **Problemas con Docker**: Verifica que Docker Desktop esté en ejecución y los puertos no estén siendo utilizados por otras aplicaciones.
+
+Para más información, consulta los archivos `GUIA_EJECUCION.md` y `EJEMPLOS_CURL.md` en la carpeta del backend.
 
 ---
 
@@ -115,6 +247,26 @@ A continuación, se describen los componentes más importantes del sistema **Clo
 
 - **Tecnología:** Next.js, TypeScript, TailwindCSS.
 - **Descripción:** Interfaz gráfica donde el usuario carga archivos Excel y visualiza los resultados de comparación. Se comunica con el backend mediante API REST.
+- **Interfaces principales:**
+
+  ```typescript
+  // Interfaz para los datos del archivo
+  export interface ArchivoData {
+  	id: number;
+  	nombre_archivo: string;
+  	fecha_carga: string;
+  }
+
+  // Interfaz para la respuesta de carga de archivo
+  export interface ArchivoResponse {
+  	archivo_id: ArchivoData;
+  }
+
+  // Interfaz para la respuesta de archivo con transacciones
+  export interface ArchivoWithTransaccionesResponse extends ArchivoData {
+  	transacciones: TransaccionResponse[];
+  }
+  ```
 
 #### **Backend (FastAPI)**
 
@@ -165,10 +317,10 @@ close-ai/
 │   │   ├── core/           # Configuraciones generales (seguridad, autenticación, etc.)
 │   │   ├── schemas/        # Esquemas Pydantic para validación de datos
 │   │   ├── utils/          # Funciones auxiliares y herramientas
-│   ├── tests/              # Pruebas automatizadas
-│   ├── main.py             # Punto de entrada del backend
-│   ├── requirements.txt    # Dependencias del backend
-│   ├── alembic/            # Migraciones de base de datos con Alembic
+│   │   ├── tests/          # Pruebas automatizadas
+│   │   ├── main.py         # Punto de entrada del backend
+│   │   ├── requirements.txt# Dependencias del backend
+│   │   ├── alembic/        # Migraciones de base de datos con Alembic
 │
 │── frontend/               # Código fuente del frontend (Next.js)
 │   ├── src/                # Lógica principal del frontend
@@ -286,17 +438,82 @@ Estas medidas garantizan un sistema seguro y confiable para el procesamiento de 
 
 ### **2.6. Tests**
 
+Close AI implementa un conjunto completo de pruebas para garantizar la calidad y el correcto funcionamiento del sistema. Las pruebas están organizadas en diferentes categorías según su propósito y alcance.
+
 #### Pruebas unitarias
 
-- **Procesamiento de datos:** Verificar que las funciones de normalización y limpieza de datos en Pandas funcionan correctamente.
-- **Comparación de transacciones:** Asegurar que el motor de comparación detecta correctamente coincidencias y discrepancias.
-- **Conversión de formatos:** Validar que los montos y fechas se convierten al formato estándar esperado.
+Las pruebas unitarias verifican el funcionamiento correcto de componentes individuales del sistema:
+
+- **Procesamiento de datos:** Verifican que las funciones de normalización y limpieza de datos en Pandas funcionan correctamente.
+- **Comparación de transacciones:** Aseguran que el motor de comparación detecta correctamente coincidencias y discrepancias.
+- **Conversión de formatos:** Validan que los montos y fechas se convierten al formato estándar esperado.
+
+Los tests unitarios incluyen:
+
+- `test_archivo_service.py`: Prueba las funciones de procesamiento de archivos Excel.
+- `test_comparacion_service.py`: Verifica la lógica de comparación entre transacciones.
+- `test_formato_service.py`: Comprueba la normalización de formatos de fecha y montos.
+
+Para ejecutar las pruebas unitarias:
+
+```bash
+# Navegar al directorio del backend
+cd closeai-backend
+
+# Ejecutar todas las pruebas unitarias
+pytest tests/unit/ -v
+
+# Ejecutar pruebas específicas
+pytest tests/unit/test_archivo_service.py -v
+pytest tests/unit/test_comparacion_service.py -v
+pytest tests/unit/test_formato_service.py -v
+```
 
 #### Pruebas de integración
 
-- **Conexión con PostgreSQL:** Comprobar que las transacciones se almacenan y consultan correctamente en la base de datos.
-- **API de procesamiento:** Validar que los endpoints del backend reciben archivos, procesan los datos y devuelven resultados esperados.
-- **Flujo completo:** Simular la carga de archivos y verificar que los resultados son correctos.
+Las pruebas de integración verifican la interacción entre diferentes componentes del sistema:
+
+- **Conexión con PostgreSQL:** Comprueban que las transacciones se almacenan y consultan correctamente en la base de datos.
+- **API de procesamiento:** Validan que los endpoints del backend reciben archivos, procesan los datos y devuelven resultados esperados.
+- **Flujo completo:** Simulan la carga de archivos y verifican que los resultados son correctos.
+
+Los tests de integración incluyen:
+
+- `test_archivo_upload.py`: Prueba el endpoint de carga de archivos y su procesamiento.
+- `test_api.py`: Verifica los endpoints básicos de la API, incluyendo health check y documentación.
+
+Para ejecutar las pruebas de integración:
+
+```bash
+# Ejecutar todas las pruebas de integración
+pytest tests/integration/ -v
+
+# Ejecutar pruebas específicas
+pytest tests/integration/test_archivo_upload.py -v
+pytest tests/integration/test_api.py -v
+```
+
+#### Ejecución de todas las pruebas
+
+Para ejecutar todas las pruebas del sistema:
+
+```bash
+# Ejecutar todas las pruebas
+pytest
+
+# Ejecutar con cobertura de código
+pytest --cov=app tests/
+```
+
+#### Configuración de pruebas
+
+Las pruebas utilizan una base de datos PostgreSQL de prueba separada para evitar afectar los datos de producción. La configuración se encuentra en el archivo `conftest.py`.
+
+Para configurar la base de datos de prueba:
+
+1. Crear una base de datos llamada `test_closeai` en PostgreSQL
+2. Asegurarse de que las credenciales en `conftest.py` son correctas
+3. Las tablas se crean y eliminan automáticamente durante las pruebas
 
 ---
 
@@ -383,8 +600,6 @@ Este modelo de datos permite gestionar eficientemente los archivos subidos y com
 
 ## 4. Especificación de la API
 
-## 4. Especificación de la API
-
 Close AI expone una API REST desarrollada con **FastAPI**, permitiendo la carga de archivos, el procesamiento de transacciones y la generación de reportes en Excel con los resultados de comparación. A continuación, se describen los **tres endpoints principales** en formato **OpenAPI**.
 
 ---
@@ -419,8 +634,18 @@ Responses:
           type: object
           properties:
             archivo_id:
-              type: integer
-              description: ID del archivo almacenado
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: ID del archivo almacenado
+                nombre_archivo:
+                  type: string
+                  description: Nombre del archivo subido
+                fecha_carga:
+                  type: string
+                  format: date-time
+                  description: Fecha y hora de carga del archivo
   400:
     description: Archivo inválido o formato no soportado
 ```
@@ -429,13 +654,17 @@ Responses:
 
 ```json
 {
-	"archivo_id": 15
+	"archivo_id": {
+		"id": 15,
+		"nombre_archivo": "transacciones.xlsx",
+		"fecha_carga": "2024-03-04T12:30:45.123456"
+	}
 }
 ```
 
 ---
 
-### **2. Comparar transacciones entre dos archivos y generar Excel**
+### **2. Comparar transacciones entre dos archivos y generar un Excel**
 
 **Descripción:** Compara las transacciones de dos archivos, agrupando coincidencias y transacciones no coincidentes, y genera un archivo Excel con los resultados.
 
