@@ -89,7 +89,7 @@ Flujo de usuario esperado:
 3. Visualización de resultados: Se muestra una tabla con transacciones coincidentes, diferencias y registros a revisar manualmente.
 4. Descarga de reportes: Los usuarios pueden exportar los resultados en Excel o CSV.
 
-   Nota: Se incluirán imágenes de la interfaz una vez esté desarrollada.
+![close-ai-screen-1](./assets/close-ai-screen-1.png)
 
 ### **1.4. Instrucciones de instalación:**
 
