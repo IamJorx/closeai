@@ -56,7 +56,7 @@ Comparación de transacciones
 
 - Identificación de coincidencias exactas y transacciones con discrepancias.
 - Tolerancia a variaciones menores en montos y fechas.
-- Detección de estados inconsistentes (ej. “Exitosa” vs “Fallida”).
+- Detección de estados inconsistentes (ej. "Exitosa" vs "Fallida").
 
 Análisis y Reportes
 
@@ -89,11 +89,229 @@ Flujo de usuario esperado:
 3. Visualización de resultados: Se muestra una tabla con transacciones coincidentes, diferencias y registros a revisar manualmente.
 4. Descarga de reportes: Los usuarios pueden exportar los resultados en Excel o CSV.
 
-   Nota: Se incluirán imágenes de la interfaz una vez esté desarrollada.
+![close-ai-screen-1](./assets/close-ai-screen-1.png)
+![close-ai-screen-2](./assets/close-ai-screen-2.png)
+![close-ai-screen-3](./assets/close-ai-screen-3.png)
 
 ### **1.4. Instrucciones de instalación:**
 
-> En construcción
+#### Requisitos previos
+
+- [Docker](https://www.docker.com/products/docker-desktop/) y Docker Compose
+- [Node.js](https://nodejs.org/) (v18 o superior)
+- [Python](https://www.python.org/) 3.11 o superior (opcional, solo si no se usa Docker)
+- [Git](https://git-scm.com/)
+
+#### Clonar el repositorio
+
+```bash
+git clone https://github.com/IamJorx/close-ai.git
+cd close-ai
+```
+
+#### Configuración del Backend
+
+1. **Usando Docker (recomendado para desarrollo local)**:
+
+   Navega a la carpeta del backend:
+
+   ```bash
+   cd closeai-backend
+   ```
+
+   Crea un archivo `.env` basado en el ejemplo:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edita el archivo `.env` para configurar las variables de entorno:
+
+   ```
+   # PostgreSQL
+   POSTGRES_SERVER=postgres
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=closeai
+   POSTGRES_PORT=5432
+
+   # General
+   SECRET_KEY=your-secret-key
+   BACKEND_CORS_ORIGINS=["http://localhost:3000"]
+   ```
+
+   Inicia los servicios con Docker Compose:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+   Esto iniciará:
+
+   - El servidor API en http://localhost:8000
+   - PostgreSQL en el puerto 5432
+   - pgAdmin en http://localhost:5050 (opcional, para gestionar la base de datos)
+
+2. **Instalación manual (alternativa para desarrollo)**:
+
+   Navega a la carpeta del backend:
+
+   ```bash
+   cd closeai-backend
+   ```
+
+   Crea y activa un entorno virtual:
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   ```
+
+   Instala las dependencias:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   Configura las variables de entorno (similar al paso anterior).
+
+   Ejecuta las migraciones de la base de datos:
+
+   ```bash
+   alembic upgrade head
+   ```
+
+   Inicia el servidor:
+
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+#### Configuración del Frontend
+
+1. Navega a la carpeta del frontend:
+
+   ```bash
+   cd closeai-frontend
+   ```
+
+2. Instala las dependencias:
+
+   ```bash
+   npm install
+   ```
+
+3. Crea un archivo `.env.local` con la configuración:
+
+   ```
+   # Para desarrollo local (backend local)
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+
+   # Para desarrollo usando el backend desplegado
+   # NEXT_PUBLIC_API_URL=https://closeai-backend-production.up.railway.app/api/v1
+   ```
+
+4. Inicia el servidor de desarrollo:
+
+   ```bash
+   npm run dev
+   ```
+
+   El frontend estará disponible en http://localhost:3000
+
+#### Despliegue en Producción
+
+##### Despliegue del Backend y Base de Datos en Railway
+
+1. Crea una cuenta en [Railway](https://railway.app/) si aún no tienes una
+
+2. Instala Railway CLI (opcional, pero recomendado para gestión):
+
+   ```bash
+   npm i -g @railway/cli
+   railway login
+   ```
+
+3. Crea un nuevo proyecto en Railway:
+
+   - Selecciona "New Project"
+   - Elige "Provision PostgreSQL" para crear la base de datos
+   - Toma nota de las credenciales generadas
+
+4. Despliega el backend:
+
+   - Selecciona "New Service" en el mismo proyecto
+   - Elige "GitHub Repo" si quieres conectar tu repositorio, o "Deploy from Dockerfile"
+   - Si usas GitHub, conecta tu repositorio y especifica el directorio `closeai-backend`
+   - Si prefieres despliegue directo, sube una copia de la carpeta `closeai-backend`
+
+5. Configura las variables de entorno en Railway:
+
+   - API_V1_STR=/api/v1
+   - PROJECT_NAME=Close AI
+   - POSTGRES_SERVER=postgres.railway.internal
+   - POSTGRES_USER={usuario-generado}
+   - POSTGRES_PASSWORD={contraseña-generada}
+   - POSTGRES_DB=railway
+   - POSTGRES_PORT=5432
+   - CORS_ORIGINS=["https://closeai-blush.vercel.app"]
+
+   > **Importante**: El formato de CORS_ORIGINS debe ser exactamente como se muestra arriba, con corchetes y comillas dobles escapadas. Este es un array en formato JSON.
+
+6. Ejecuta las migraciones de la base de datos:
+
+   Para proyectos con múltiples servicios, necesitarás especificar los IDs del proyecto, entorno y servicio:
+
+   ```bash
+   railway ssh --project=[ID-PROYECTO] --environment=[ID-ENTORNO] --service=[ID-SERVICIO]
+   ```
+
+   Por ejemplo:
+
+   ```bash
+   railway ssh --project=[REEMPLAZAR-CON-ID-PROYECTO] --environment=[REEMPLAZAR-CON-ID-AMBIENTE] --service=[REEMPLAZAR-CON-ID-SERVICIO]
+   ```
+
+   Una vez conectado al shell:
+
+   ```bash
+   cd /app
+   alembic upgrade head
+   ```
+
+7. La URL del backend desplegado será algo como: `https://tu-servicio-production.up.railway.app`
+
+##### Despliegue del Frontend en Vercel
+
+1. Crea una cuenta en [Vercel](https://vercel.com/) si aún no tienes una
+
+2. Conecta tu repositorio de GitHub a Vercel
+
+3. Configura el proyecto para despliegue:
+
+   - Framework Preset: Next.js
+   - Root Directory: `closeai-frontend`
+
+4. Configura las variables de entorno en Vercel:
+
+   - NEXT_PUBLIC_API_URL=https://tu-servicio-production.up.railway.app/api/v1
+
+5. Despliega el proyecto y Vercel generará una URL para tu frontend
+
+#### Verificación de la instalación
+
+1. Accede al frontend en la URL proporcionada por Vercel
+2. Verifica que puedes cargar archivos Excel y realizar comparaciones
+3. La documentación de la API está disponible en {URL-backend-railway}/docs
+
+#### Solución de problemas comunes
+
+- **Error de conexión a la base de datos**: Verifica que PostgreSQL esté en ejecución y las credenciales en el archivo `.env` sean correctas.
+- **Error al cargar archivos**: Asegúrate de que los archivos Excel tengan el formato esperado (consulta la documentación).
+- **Problemas con Docker**: Verifica que Docker Desktop esté en ejecución y los puertos no estén siendo utilizados por otras aplicaciones.
+- **Problemas de CORS**: Verifica que la URL del frontend esté incluida en la configuración de CORS_ORIGINS en el backend.
+
+Para más información, consulta los archivos `GUIA_EJECUCION.md` y `EJEMPLOS_CURL.md` en la carpeta del backend.
 
 ---
 
@@ -115,6 +333,26 @@ A continuación, se describen los componentes más importantes del sistema **Clo
 
 - **Tecnología:** Next.js, TypeScript, TailwindCSS.
 - **Descripción:** Interfaz gráfica donde el usuario carga archivos Excel y visualiza los resultados de comparación. Se comunica con el backend mediante API REST.
+- **Interfaces principales:**
+
+  ```typescript
+  // Interfaz para los datos del archivo
+  export interface ArchivoData {
+  	id: number;
+  	nombre_archivo: string;
+  	fecha_carga: string;
+  }
+
+  // Interfaz para la respuesta de carga de archivo
+  export interface ArchivoResponse {
+  	archivo_id: ArchivoData;
+  }
+
+  // Interfaz para la respuesta de archivo con transacciones
+  export interface ArchivoWithTransaccionesResponse extends ArchivoData {
+  	transacciones: TransaccionResponse[];
+  }
+  ```
 
 #### **Backend (FastAPI)**
 
@@ -143,8 +381,8 @@ A continuación, se describen los componentes más importantes del sistema **Clo
 
 #### **Seguridad**
 
-- **Tecnología:** OAuth2, JWT, CORS.
-- **Descripción:** Gestiona la autenticación y autorización de usuarios para proteger el acceso a los datos.
+- **Tecnología:** CORS.
+- **Descripción:** Gestiona las políticas de acceso a recursos para proteger la API.
 
 ### **2.3. Descripción de alto nivel del proyecto y estructura de ficheros**
 
@@ -155,36 +393,41 @@ Close AI sigue una **arquitectura modular basada en capas**, donde el **frontend
 ### **Estructura de Ficheros**
 
 ```plaintext
-close-ai/
-│── backend/                # Código fuente del backend (FastAPI)
-│   ├── app/                # Lógica principal del backend
-│   │   ├── api/            # Endpoints y controladores de la API
-│   │   ├── models/         # Definición de modelos SQLAlchemy
-│   │   ├── services/       # Lógica de negocio y procesamiento de transacciones
-│   │   ├── db/             # Configuración de la base de datos y migraciones
-│   │   ├── core/           # Configuraciones generales (seguridad, autenticación, etc.)
-│   │   ├── schemas/        # Esquemas Pydantic para validación de datos
-│   │   ├── utils/          # Funciones auxiliares y herramientas
-│   ├── tests/              # Pruebas automatizadas
-│   ├── main.py             # Punto de entrada del backend
-│   ├── requirements.txt    # Dependencias del backend
-│   ├── alembic/            # Migraciones de base de datos con Alembic
+finalproject-JLSO/
+│── closeai-backend/              # Código fuente del backend (FastAPI)
+│   ├── app/                      # Lógica principal del backend
+│   │   ├── api/                  # Endpoints y controladores de la API
+│   │   │   ├── api.py            # Configuración de rutas de la API
+│   │   │   └── endpoints/        # Controladores por recurso
+│   │   ├── core/                 # Configuraciones generales
+│   │   │   └── config.py         # Variables de entorno y configuración
+│   │   ├── db/                   # Configuración de la base de datos
+│   │   ├── models/               # Modelos SQLAlchemy (tablas DB)
+│   │   ├── schemas/              # Esquemas Pydantic para validación
+│   │   ├── services/             # Lógica de negocio
+│   │   └── utils/                # Funciones auxiliares
+│   ├── alembic/                  # Migraciones de base de datos
+│   ├── tests/                    # Pruebas automatizadas
+│   ├── .env                      # Variables de entorno (desarrollo)
+│   ├── .env.example              # Ejemplo de variables de entorno
+│   ├── Dockerfile                # Configuración para contenedorización
+│   ├── docker-compose.yml        # Configuración de servicios Docker
+│   ├── requirements.txt          # Dependencias del backend
+│   └── main.py                   # Punto de entrada del backend
 │
-│── frontend/               # Código fuente del frontend (Next.js)
-│   ├── src/                # Lógica principal del frontend
-│   │   ├── components/     # Componentes reutilizables de React
-│   │   ├── pages/          # Rutas y vistas principales
-│   │   ├── services/       # Funciones para comunicación con la API
-│   │   ├── hooks/          # Hooks personalizados de React
-│   │   ├── styles/         # Estilos globales y de componentes
-│   ├── public/             # Recursos estáticos (imágenes, íconos, etc.)
-│   ├── package.json        # Dependencias del frontend
-│   ├── next.config.js      # Configuración de Next.js
+│── closeai-frontend/             # Código fuente del frontend (Next.js)
+│   ├── app/                      # Aplicación Next.js (App Router)
+│   ├── components/               # Componentes reutilizables
+│   ├── hooks/                    # Hooks personalizados de React
+│   ├── lib/                      # Utilidades y servicios API
+│   ├── public/                   # Recursos estáticos
+│   ├── .env.local                # Variables de entorno locales
+│   ├── package.json              # Dependencias del frontend
+│   └── tailwind.config.ts        # Configuración de TailwindCSS
 │
-│── docs/                   # Documentación del proyecto
-│── .env.example            # Variables de entorno de ejemplo
-│── docker-compose.yml      # Configuración de contenedores Docker
-│── README.md               # Documentación general del proyecto
+│── assets/                       # Recursos globales (diagramas, etc.)
+│── diagrama_infraestructura.txt  # Diagrama de infraestructura como código
+│── readme.md                     # Documentación general del proyecto
 ```
 
 ---
@@ -199,7 +442,7 @@ close-ai/
 
 ### **2.4. Infraestructura y despliegue**
 
-Close AI utiliza una infraestructura modular y escalable basada en **contenedores Docker** y servicios en la nube para facilitar su despliegue y mantenimiento. A continuación, se detalla la infraestructura del proyecto y el proceso de despliegue.
+Close AI utiliza una infraestructura modular y escalable basada en **servicios en la nube** para facilitar su despliegue y mantenimiento. A continuación, se detalla la infraestructura del proyecto y el proceso de despliegue.
 
 ![Infraestructura y despliegue](./assets/close-ai_deploy_diagram.png)
 
@@ -207,15 +450,13 @@ Close AI utiliza una infraestructura modular y escalable basada en **contenedore
 
 #### **Componentes de Infraestructura**
 
-| Componente                | Tecnología                                   | Función                                                         |
-| ------------------------- | -------------------------------------------- | --------------------------------------------------------------- |
-| **Frontend**              | Next.js, TypeScript                          | Interfaz de usuario para carga y visualización de datos.        |
-| **Backend**               | FastAPI, Python                              | Procesa archivos y compara transacciones.                       |
-| **Base de Datos**         | PostgreSQL                                   | Almacena transacciones y facilita consultas eficientes.         |
-| **Búsqueda de Similitud** | FAISS, SentenceTransformers                  | Permite encontrar transacciones similares con embeddings.       |
-| **Contenedores**          | Docker, Docker Compose                       | Facilita la replicación del entorno de desarrollo y producción. |
-| **Proxy Reverso**         | Nginx                                        | Gestiona el tráfico de red y protege la API.                    |
-| **Despliegue en la Nube** | AWS/GCP (Opcional) - vercel para el frontend | Permite ejecutar la aplicación en servidores escalables.        |
+| Componente                | Tecnología                  | Función                                                         |
+| ------------------------- | --------------------------- | --------------------------------------------------------------- |
+| **Frontend**              | Next.js, TypeScript, Vercel | Interfaz de usuario para carga y visualización de datos.        |
+| **Backend**               | FastAPI, Python, Railway    | Procesa archivos y compara transacciones.                       |
+| **Base de Datos**         | PostgreSQL en Railway       | Almacena transacciones y facilita consultas eficientes.         |
+| **Búsqueda de Similitud** | FAISS, SentenceTransformers | Permite encontrar transacciones similares con embeddings.       |
+| **Contenedores**          | Docker                      | Facilita la replicación del entorno de desarrollo y producción. |
 
 ### Proceso de despliegue
 
@@ -227,23 +468,43 @@ El frontend se despliega automáticamente en Vercel con cada push a la rama `mai
 git push origin main
 ```
 
-Vercel detectará los cambios y desplegará la nueva versión en `https://closeai.vercel.app/`.
+Vercel detectará los cambios y desplegará la nueva versión en `https://closeai-blush.vercel.app/`.
 
----
+#### Despliegue del backend y base de datos en Railway
 
-#### Despliegue del backend con Docker
+1. **Configurar el proyecto en Railway**:
 
-```sh
-docker-compose up -d --build
-```
+   - Crear un proyecto y provisionar PostgreSQL
+   - Desplegar el backend con la opción "Deploy from GitHub" o "Deploy from Dockerfile"
 
----
+2. **Configurar las variables de entorno**:
 
-#### Configuración del servidor con Nginx
+   ```
+   API_V1_STR=/api/v1
+   PROJECT_NAME=Close AI
+   CORS_ORIGINS=["https://closeai-blush.vercel.app"]
+   POSTGRES_SERVER=postgres.railway.internal
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=password-generado
+   POSTGRES_DB=railway
+   POSTGRES_PORT=5432
+   ```
 
-```sh
-sudo systemctl restart nginx
-```
+3. **Ejecutar las migraciones de la base de datos usando Railway CLI**:
+
+   ```sh
+   # Para proyectos con múltiples servicios, especificar IDs
+   railway ssh --project=[ID-PROYECTO] --environment=[ID-ENTORNO] --service=[ID-SERVICIO]
+
+   # Una vez en el shell
+   cd /app
+   alembic upgrade head
+   ```
+
+4. **Actualizar la URL del backend en el frontend**:
+   - Configurar la variable de entorno `NEXT_PUBLIC_API_URL` en Vercel con la URL del backend desplegado en Railway
+
+Esta arquitectura cloud-native permite una escalabilidad flexible y un mantenimiento simplificado del sistema sin necesidad de gestionar infraestructura compleja como proxy inversos o balanceadores de carga.
 
 ### **2.5. Seguridad**
 
@@ -262,7 +523,7 @@ Close AI implementa diversas prácticas de seguridad para proteger los datos y g
 
 ## Seguridad en la base de datos
 
-- **Control de Acceso y Autenticación:** Crear un usuario de PostgreSQL con permisos limitados solo a las operaciones necesarias (LECTURA/ESCRITURA).
+- **Control de Acceso y Autenticación:** Control de acceso mediante las políticas de seguridad de Railway para la base de datos PostgreSQL.
 - **Principio de privilegios mínimos:** Los usuarios de la base de datos tienen permisos restringidos según sus necesidades.
 - **Prevención de Inyecciones SQL:** Uso de consultas parametrizadas en SQLAlchemy.
 
@@ -270,9 +531,8 @@ Close AI implementa diversas prácticas de seguridad para proteger los datos y g
 
 ## Seguridad en la infraestructura
 
-- **Firewall y control de acceso:** Se configuran reglas de firewall para restringir accesos no autorizados al servidor.
-- **Proxy reverso con Nginx:** Actúa como una capa de seguridad adicional para proteger el backend.
-- **Despliegue seguro en Vercel y servidores cloud:** Uso de HTTPS y certificados SSL para cifrar la comunicación.
+- **HTTPS:** Uso obligatorio de HTTPS para todas las comunicaciones entre el frontend y el backend.
+- **Despliegue seguro en Vercel y Railway:** Uso de HTTPS y certificados SSL para cifrar la comunicación.
 
 ---
 
@@ -286,17 +546,82 @@ Estas medidas garantizan un sistema seguro y confiable para el procesamiento de 
 
 ### **2.6. Tests**
 
+Close AI implementa un conjunto completo de pruebas para garantizar la calidad y el correcto funcionamiento del sistema. Las pruebas están organizadas en diferentes categorías según su propósito y alcance.
+
 #### Pruebas unitarias
 
-- **Procesamiento de datos:** Verificar que las funciones de normalización y limpieza de datos en Pandas funcionan correctamente.
-- **Comparación de transacciones:** Asegurar que el motor de comparación detecta correctamente coincidencias y discrepancias.
-- **Conversión de formatos:** Validar que los montos y fechas se convierten al formato estándar esperado.
+Las pruebas unitarias verifican el funcionamiento correcto de componentes individuales del sistema:
+
+- **Procesamiento de datos:** Verifican que las funciones de normalización y limpieza de datos en Pandas funcionan correctamente.
+- **Comparación de transacciones:** Aseguran que el motor de comparación detecta correctamente coincidencias y discrepancias.
+- **Conversión de formatos:** Validan que los montos y fechas se convierten al formato estándar esperado.
+
+Los tests unitarios incluyen:
+
+- `test_archivo_service.py`: Prueba las funciones de procesamiento de archivos Excel.
+- `test_comparacion_service.py`: Verifica la lógica de comparación entre transacciones.
+- `test_formato_service.py`: Comprueba la normalización de formatos de fecha y montos.
+
+Para ejecutar las pruebas unitarias:
+
+```bash
+# Navegar al directorio del backend
+cd closeai-backend
+
+# Ejecutar todas las pruebas unitarias
+pytest tests/unit/ -v
+
+# Ejecutar pruebas específicas
+pytest tests/unit/test_archivo_service.py -v
+pytest tests/unit/test_comparacion_service.py -v
+pytest tests/unit/test_formato_service.py -v
+```
 
 #### Pruebas de integración
 
-- **Conexión con PostgreSQL:** Comprobar que las transacciones se almacenan y consultan correctamente en la base de datos.
-- **API de procesamiento:** Validar que los endpoints del backend reciben archivos, procesan los datos y devuelven resultados esperados.
-- **Flujo completo:** Simular la carga de archivos y verificar que los resultados son correctos.
+Las pruebas de integración verifican la interacción entre diferentes componentes del sistema:
+
+- **Conexión con PostgreSQL:** Comprueban que las transacciones se almacenan y consultan correctamente en la base de datos.
+- **API de procesamiento:** Validan que los endpoints del backend reciben archivos, procesan los datos y devuelven resultados esperados.
+- **Flujo completo:** Simulan la carga de archivos y verifican que los resultados son correctos.
+
+Los tests de integración incluyen:
+
+- `test_archivo_upload.py`: Prueba el endpoint de carga de archivos y su procesamiento.
+- `test_api.py`: Verifica los endpoints básicos de la API, incluyendo health check y documentación.
+
+Para ejecutar las pruebas de integración:
+
+```bash
+# Ejecutar todas las pruebas de integración
+pytest tests/integration/ -v
+
+# Ejecutar pruebas específicas
+pytest tests/integration/test_archivo_upload.py -v
+pytest tests/integration/test_api.py -v
+```
+
+#### Ejecución de todas las pruebas
+
+Para ejecutar todas las pruebas del sistema:
+
+```bash
+# Ejecutar todas las pruebas
+pytest
+
+# Ejecutar con cobertura de código
+pytest --cov=app tests/
+```
+
+#### Configuración de pruebas
+
+Las pruebas utilizan una base de datos PostgreSQL de prueba separada para evitar afectar los datos de producción. La configuración se encuentra en el archivo `conftest.py`.
+
+Para configurar la base de datos de prueba:
+
+1. Crear una base de datos llamada `test_closeai` en PostgreSQL
+2. Asegurarse de que las credenciales en `conftest.py` son correctas
+3. Las tablas se crean y eliminan automáticamente durante las pruebas
 
 ---
 
@@ -383,8 +708,6 @@ Este modelo de datos permite gestionar eficientemente los archivos subidos y com
 
 ## 4. Especificación de la API
 
-## 4. Especificación de la API
-
 Close AI expone una API REST desarrollada con **FastAPI**, permitiendo la carga de archivos, el procesamiento de transacciones y la generación de reportes en Excel con los resultados de comparación. A continuación, se describen los **tres endpoints principales** en formato **OpenAPI**.
 
 ---
@@ -419,8 +742,18 @@ Responses:
           type: object
           properties:
             archivo_id:
-              type: integer
-              description: ID del archivo almacenado
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: ID del archivo almacenado
+                nombre_archivo:
+                  type: string
+                  description: Nombre del archivo subido
+                fecha_carga:
+                  type: string
+                  format: date-time
+                  description: Fecha y hora de carga del archivo
   400:
     description: Archivo inválido o formato no soportado
 ```
@@ -429,13 +762,17 @@ Responses:
 
 ```json
 {
-	"archivo_id": 15
+	"archivo_id": {
+		"id": 15,
+		"nombre_archivo": "transacciones.xlsx",
+		"fecha_carga": "2024-03-04T12:30:45.123456"
+	}
 }
 ```
 
 ---
 
-### **2. Comparar transacciones entre dos archivos y generar Excel**
+### **2. Comparar transacciones entre dos archivos y generar un Excel**
 
 **Descripción:** Compara las transacciones de dos archivos, agrupando coincidencias y transacciones no coincidentes, y genera un archivo Excel con los resultados.
 
@@ -481,6 +818,8 @@ Encabezados esperados en el Excel:
 | TXN002 | 2024-02-14 | 987654 | 321987 | 200.00 | 210.00 | Exitosa | Exitosa | Diferencia en monto |
 | TXN003 | 2024-02-14 | 555555 | 444444 | 500.00 | - | Exitosa | - | Solo en Archivo 1 |
 | TXN004 | 2024-02-14 | 111111 | 999999 | - | 350.00 | - | Fallida | Solo en Archivo 2 |
+
+Nota: Cada tipo de coincidencia se muestra en una hoja diferente del archivo Excel.
 
 ---
 
@@ -763,12 +1102,113 @@ Se debe diseñar y crear las tablas necesarias en PostgreSQL para almacenar arch
 
 - 16/02/2025: Creado por Jorge
 
+- 04/03/2025: Se actualizan secciones de la documentación que dependían de la implementación del proyecto.
+
 ---
 
 ## 7. Pull Requests
 
 **Pull Request 1**
 
+# Resumen de Implementación - Close AI
+
+## Backend
+
+- **Arquitectura**: Implementación de API REST con FastAPI y PostgreSQL
+- **Base de datos**:
+  - Tablas `archivos` y `transacciones` con relaciones definidas
+  - Migraciones con Alembic
+- **Endpoints**:
+  - `/upload`: Carga y procesamiento de archivos Excel
+  - `/comparar-excel`: Comparación de transacciones entre dos archivos
+  - `/archivo/{id}`: Consulta de transacciones por archivo
+  - `/health`: Verificación del estado del servicio
+- **Servicios**:
+  - `ArchivoService`: Procesamiento de archivos Excel y normalización de datos
+  - Comparación de transacciones con detección de coincidencias y discrepancias
+  - Generación de reportes en Excel con resultados de comparación
+- **Dockerización**: Contenedores para API, PostgreSQL y pgAdmin
+
+## Frontend
+
+- **Tecnologías**: Next.js, TypeScript y TailwindCSS
+- **Componentes**:
+  - `FileComparison`: Carga y comparación de archivos
+  - Visualización de resultados y descarga de reportes
+- **Servicios**:
+  - Integración con API mediante Axios
+  - Manejo de respuestas y errores
+- **Interfaces**:
+  - Definición de tipos para respuestas de API (`ArchivoData`, `ArchivoResponse`, etc.)
+
+## Tests
+
+- **Unitarios**:
+  - `test_archivo_service.py`: Validación del procesamiento de archivos
+  - `test_comparacion_service.py`: Verificación de la lógica de comparación
+  - `test_formato_service.py`: Pruebas de normalización de formatos
+- **Integración**:
+  - `test_archivo_upload.py`: Pruebas de carga de archivos
+  - `test_api.py`: Verificación de endpoints básicos y health check
+
+## Mejoras
+
+- Estructura de respuesta mejorada para el endpoint `/upload`
+- Manejo robusto de errores en frontend y backend
+- Validación de formatos de archivo y datos
+- Documentación de API con OpenAPI
+
 **Pull Request 2**
 
+# Configuración de Despliegue en Cloud - Close AI
+
+## Infraestructura Cloud
+
+- **Railway para Backend y Base de Datos**:
+
+  - Configuración de despliegue del backend FastAPI en Railway
+  - Provisión de PostgreSQL gestionado por Railway
+  - Configuración de variables de entorno para el entorno de producción
+  - Ejecución manual de migraciones de base de datos a través de Railway CLI
+  - Configuración de CORS para permitir acceso desde el frontend desplegado
+
+- **Vercel para Frontend**:
+  - Configuración para despliegue continuo del frontend Next.js
+  - Actualización de variables de entorno para apuntar al backend en producción
+  - Optimización de la build para rendimiento en producción
+
+## Actualizaciones de Código
+
+- **Backend**:
+
+  - Configuración de variables de entorno directamente en Railway para el despliegue
+  - Ejecución manual de migraciones de base de datos a través de Railway CLI
+  - Ajuste de configuraciones CORS para aceptar peticiones desde el dominio de Vercel
+  - Uso de Railway como plataforma de despliegue en lugar de infraestructura como código
+
+- **Frontend**:
+  - Actualización de `api.ts` para apuntar a la URL del backend en Railway
+  - Configuración de variables de entorno para diferentes entornos (desarrollo y producción)
+  - Optimización de carga de archivos para mejorar la experiencia de usuario
+
+## Documentación
+
+- **Actualización del README.md**:
+
+  - Instrucciones detalladas para despliegue en Railway y Vercel
+  - Diagrama actualizado de la infraestructura cloud
+  - Guía de solución de problemas comunes durante el despliegue
+
+- **Diagrama de Infraestructura**:
+  - Creación de diagrama as code que refleja la arquitectura basada en Railway y Vercel
+  - Visualización clara de los componentes y sus interacciones en el entorno cloud
+
+## Seguridad
+
+- Configuración de acceso seguro a la base de datos en Railway
+- Implementación de HTTPS para todas las comunicaciones entre frontend y backend
+- Validación de variables de entorno sensibles para evitar exposición en el repositorio
+
 **Pull Request 3**
+
+---
